@@ -1,6 +1,6 @@
 # COVID-19 vaccination
 
-Code repository for the research article ***Relaxing restrictions at the pace of vaccination increases freedom and guards against further COVID-19 waves in Europe***, [published as a pre-print on arXiv](https://arxiv.org/abs/2103.06228).
+Code repository for the research article ***Relaxing restrictions at the pace of vaccination increases freedom and guards against further COVID-19 waves in Europe***, [published as a pre-print on arXiv](https://arxiv.org/abs/2103.06228). The data generation part of the code is written in the [Rust programming language](https://www.rust-lang.org/), the plots are created using Matplotlib in Python.
 
 ## The structure of this repository:
 In this repository you will find five main folders:
