@@ -1,0 +1,12 @@
+[package]
+name = "covid19_vaccine_model"
+version = "1.0.0"
+authors = ["Simon Bauer", "Sebastian Contreras"]
+edition = "2018"
+description = "The library implementing everything for the model and the solver from our paper."
+readme = "README.md"
+homepage = "https://arxiv.org/abs/2103.06228"
+repository = ""
+license-file = "../LICENSE"
+keywords = ["COVID-19", "vaccination", "MPIDS"]
+publish = false

@@ -1,0 +1,1 @@
+{"rustc":14088978341743255589,"features":"[]","target":18144670029834107748,"profile":4339006351771724982,"path":1036222786711178230,"deps":[[13449829397490703404,"ndarray",false,17049742070468973492]],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/vaccine_model-3d2c8ebb31047114/dep-bin-vaccine_model"}}],"rustflags":[],"metadata":1112924831880805239,"config":0}

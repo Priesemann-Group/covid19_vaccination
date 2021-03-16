@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["main",""]],"mod":[["vaccination_model",""]]});

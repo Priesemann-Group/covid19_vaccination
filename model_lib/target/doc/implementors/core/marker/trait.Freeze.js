@@ -1,0 +1,4 @@
+(function() {var implementors = {};
+implementors["covid19_vaccine_model"] = [{"text":"impl Freeze for Model","synthetic":true,"types":[]},{"text":"impl Freeze for AgeGroup","synthetic":true,"types":[]},{"text":"impl Freeze for Solver","synthetic":true,"types":[]},{"text":"impl Freeze for AgeGroupStateVector","synthetic":true,"types":[]}];
+implementors["covid19_vaccine_model_priesemann"] = [{"text":"impl Freeze for AgeGroup","synthetic":true,"types":[]},{"text":"impl Freeze for Model","synthetic":true,"types":[]},{"text":"impl Freeze for Solver","synthetic":true,"types":[]},{"text":"impl Freeze for AgeGroupStateVector","synthetic":true,"types":[]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,0 +1,15 @@
+[package]
+name = "covid19_vaccine_model_icu_durations"
+version = "1.0.0"
+authors = ["Simon Bauer", "Sebastian Contreras"]
+edition = "2018"
+description = "A script for generating the ICU plots from Fig. 4 of our paper."
+readme = "README.md"
+homepage = "https://arxiv.org/abs/2103.06228"
+repository = ""
+license-file = "../LICENSE"
+keywords = ["COVID-19", "vaccination", "MPIDS"]
+publish = false
+
+[dependencies]
+covid19_vaccine_model = {path = "../model_lib"}
