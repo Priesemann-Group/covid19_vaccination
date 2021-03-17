@@ -29,6 +29,8 @@ pub struct AgeGroup {
 	/// Fatality rates in the ICU compartment (array indices: vaccination status, $\delta_i^{ICU}$)
 	pub delta_ICU: [f64; 3],
 
+	/// Fraction of this age group that is eligable for vaccination
+	pub eligible_fraction: f64,
 	/// Minimal vaccine uptake (as a fraction, used to interpolate) 
 	pub min_uptake: f64,
 	/// Maximal vaccine uptake (as a fraction, used to interpolate) 
@@ -47,7 +49,7 @@ impl AgeGroup {
 
 	/// Linearily interpolates the uptake between the minimal and maximal uptake. s=0 returns the minimal, s=1 the maximal uptake.
 	pub fn uptake(&self, s:f64) -> f64 {
-		self.min_uptake + s*(self.max_uptake-self.min_uptake)
+		self.eligible_fraction*(self.min_uptake + s*(self.max_uptake-self.min_uptake))
 	}
 }
 
@@ -61,6 +63,8 @@ pub struct Model {
 	pub M: f64,
 	/// ~Infection blocking potential of the vaccine ($\eta_0$ in the manuscript)
 	pub eta0: f64,
+	/// Relative infectiousness of vaccinated and unvaccinated individuals (to account for reduced viral load in breakthrough infections)
+	pub sigma: [f64; 3],
 	/// ~Vaccine efficacy against severe infections ($\kappa_0$ in the manuscript)
 	pub kappa0: f64,
 	/// Time between vaccination and developed immunization (time to go from V to S)
@@ -85,17 +89,20 @@ pub struct Model {
 	pub N_test_ineff: f64,
 	/// Limit of daily infections above which essentially no testing can be performed due to overwhelmed authorites
 	pub N_no_test: f64,
+
+	/// Contact Matrix
+	pub contacts: Vec<Vec<f64>>,
 }
 
 impl Model {
 	
 	/// Sums up all I compartments of all age groups and vaccinations status weighted by the removal rate from the I compartment, i.e. returns $\sum_{i,\nu}\bar\gamma_i I^\nu_i$.
 	/// Used for the contagion terms in the dif. eqs.
-	pub fn I_eff(&self, state: &Vec<AgeGroupStateVector>) -> f64{
+	pub fn I_eff(&self, group: usize, state: &Vec<AgeGroupStateVector>) -> f64{
 		let mut ipm: f64 = 0.0;
 		for j in 0..self.age_groups.len() {
 			for vacc in 0..3 {
-				ipm += self.age_groups[j].gamma_bar()*state[j].I[vacc];
+				ipm += self.contacts[group][j]*self.age_groups[j].gamma_bar()*self.sigma[vacc]*state[j].I[vacc]/self.age_groups[j].M;
 			}
 		}
 		ipm
@@ -105,11 +112,7 @@ impl Model {
 	/// and the delayed system state at time $t-\tau$.
 	/// 
 	/// Returns: (vector of slopes for all age group compartments, slope for H)
-	pub fn slopes(&self, t: f64, h: f64, R: f64, state: &Vec<AgeGroupStateVector>, delayed_R: f64, delayed_state: &Vec<AgeGroupStateVector>) -> (Vec<AgeGroupStateVector>, f64){
-		// Retrieve delayed value for ipm ("infections per member")
-		let ipm = R/self.M*self.I_eff(state);
-		let delayed_ipm = delayed_R/self.M*self.I_eff(&delayed_state);
-
+	pub fn slopes(&self, t: f64, R: f64, state: &Vec<AgeGroupStateVector>, delayed_R: f64, delayed_state: &Vec<AgeGroupStateVector>) -> Vec<AgeGroupStateVector>{
 		let week = (t/7.0).floor() as usize;							// current week at t
 		let delayed_week = ((t-self.tau)/7.0).floor() as usize;			// week at t-tau
 
@@ -117,6 +120,10 @@ impl Model {
 
 		for age_group_index in 0..self.age_groups.len() {
 			let i = &self.age_groups[age_group_index];				// age group i (for easy access of the age-specific parameters)
+
+			// Retrieve delayed value for ipm ("infections per member")
+			let ipm = R*self.I_eff(age_group_index, state);
+			let delayed_ipm = delayed_R*self.I_eff(age_group_index, &delayed_state);
 
 			let i_state = state[age_group_index];					// current state of age group i (at t)
 			let i_state_delayed = delayed_state[age_group_index];	// delayed state of age group i (at t-tau)
@@ -134,7 +141,7 @@ impl Model {
 			let frac1_delayed = (i_state_delayed.S[1]/(i_state_delayed.S[1] + i_state_delayed.R[1])).min(1.0).max(0.0);
 
 			// p_i(t)
-			let pi = 1.0 - (-h - i.influx*self.tau/i.M).exp();
+			let pi = 1.0 - (-i_state.h - i.influx*self.tau/i.M).exp();
 
 			// Slopes for this age group
 			let slopes = AgeGroupStateVector { 
@@ -161,13 +168,14 @@ impl Model {
 
 				R: [i.gamma_I[0]*i_state.I[0] + i.gamma_ICU[0]*i_state.ICU[0] - f1*(1.-frac0),
 					i.gamma_I[1]*i_state.I[1] + i.gamma_ICU[1]*i_state.ICU[1] - f2*(1.-frac1) + f1*(1.-frac0) + self.eta0*f1_delayed*frac0_delayed*(1.-pi),
-					i.gamma_I[2]*i_state.I[2] + i.gamma_ICU[2]*i_state.ICU[2] 				  + f2*(1.-frac1) + self.eta0*f2_delayed*frac1_delayed*(1.-pi)]
+					i.gamma_I[2]*i_state.I[2] + i.gamma_ICU[2]*i_state.ICU[2] 				  + f2*(1.-frac1) + self.eta0*f2_delayed*frac1_delayed*(1.-pi)],
+				h: ipm-delayed_ipm
 			};
 			full_slopes.push(slopes);
 		}
 
 		// Return (all compartment slopes, dH/dt)
-		(full_slopes, ipm-delayed_ipm)
+		full_slopes
 	}
 
 	/// Add an age group to the model. Adds also this age groups population $M_i$ to the total $M$.
@@ -176,11 +184,11 @@ impl Model {
 		self.age_groups.push(age_group);
 	}
 
-	/// Returns the vaccine supplies $w^T(week)$ for a given week determined by the logistic
+	/// Returns the vaccine supplies $w^T(week)$ for a given week per million inhabitants determined by the logistic
 	///
 	/// $w^T(week)=\frac{11 mio}{1+\exp{-0.17(week-21)}}.$ 
-	fn vaccine_supplies_per_week(week: usize) -> f64 {
-		let a:f64 = 11e6;
+	fn vaccine_supplies_per_week_per_million(week: usize) -> f64 {
+		let a:f64 = 11e6/83.31;	// convert from German supplies to per million
 		let b:f64 = 0.17;
 		let c:f64 = 21.0;
 		a/(1. + (-b*(week as f64 - c)).exp())
@@ -188,14 +196,14 @@ impl Model {
 
 	/// Returns the total doses of vaccination given in a week, i.e. the convoluted supplies, i.e.
 	/// $\sum_{\tau=0}^2 K\[\tau\] w^T(week-\tau)$ with $K=\[0.6, 0.3, 0.1\]$
-	fn total_vaccination_rates_per_week(week:usize) -> f64 {
+	fn total_vaccination_rates_per_week_per_million(week:usize) -> f64 {
 		let delay = [0.6f64, 0.3, 0.1];
 		let mut rate:f64 = 0.0;
 		for i in 0..delay.len() {
 			if week < i {
 				break;
 			}
-			rate += delay[i]*Model::vaccine_supplies_per_week(week-i);
+			rate += delay[i]*Model::vaccine_supplies_per_week_per_million(week-i);
 		}
 		rate
 	}
@@ -205,12 +213,14 @@ impl Model {
 		// Find the minimum and maximum total vaccine uptake
 		let mut min_total_uptake: f64 = 0.0;
 		let mut max_total_uptake: f64 = 0.0;
+		let mut total_eligible: f64 = 0.0;
 		for ag in &self.age_groups {
-			min_total_uptake += ag.min_uptake*ag.M;
-			max_total_uptake += ag.max_uptake*ag.M;
+			total_eligible += ag.eligible_fraction*ag.M;
+			min_total_uptake += ag.eligible_fraction*ag.min_uptake*ag.M;
+			max_total_uptake += ag.eligible_fraction*ag.max_uptake*ag.M;
 		}
-		min_total_uptake /= self.M;
-		max_total_uptake /= self.M;
+		min_total_uptake /= total_eligible;
+		max_total_uptake /= total_eligible;
 
 		// the given total_vaccination_fraction is the linear interpolation between the two extrema
 		(total_uptake-min_total_uptake)/(max_total_uptake-min_total_uptake)
@@ -238,11 +248,11 @@ impl Model {
 		}
 		N_phases += 1;
 
-		// Find the number of age groups for a corresponding phase
-		let mut N_groups_by_phase: Vec<usize> = vec![0; N_phases];
+		// Find the total size of age groups for a corresponding phase
+		let mut M_priorities_by_phase: Vec<f64> = vec![0.0; N_phases];
 		for ag in &self.age_groups {
 			if ag.phase == -1 {continue;}
-			N_groups_by_phase[ag.phase as usize] += 1;
+			M_priorities_by_phase[ag.phase as usize] += ag.uptake(s)*ag.M;
 		}
 
 		// Initialise some variables
@@ -273,7 +283,7 @@ impl Model {
 			// ii) Distribute all remaining supplies for the week as first doses
 			if phase < N_phases { // test for the case that all phases of the vacc. program have been completed
 				
-				let total_dose1s = Model::total_vaccination_rates_per_week(week) - total_dose2s;	// remaining supplies
+				let total_dose1s = Model::total_vaccination_rates_per_week_per_million(week)*self.M/1e6 - total_dose2s;	// remaining supplies
 
 				let mut total_dose1s_random = self.random_vacc*total_dose1s;		// how much of the supplies will be randomly distributed
 				let mut total_dose1s_priority = total_dose1s - total_dose1s_random;	// and how much to the prioritised groups in this phase
@@ -289,22 +299,22 @@ impl Model {
 						let wanted = age_group.uptake(s) * age_group.M;	// how many first doses does this age group want
 	
 						if age_group.phase != -1 && dose1s[age_group_index] < wanted {				// will be vaccinated eventually && hasn't recieved enough vaccination yet
-							if dose1s[age_group_index] >= wanted { continue; }	// already done
+							//if dose1s[age_group_index] >= wanted { continue; }	// already done
 
 							let priority = age_group.phase == (phase as i32); // does this group have priority?
 							if priority {
-								M_priorities += age_group.M;
-								if dose1s[age_group_index] + total_dose1s_priority/(N_groups_by_phase[phase] as f64) >= wanted {	// do this weeks vaccinations fill up the compliance?
+								M_priorities += wanted;
+								if dose1s[age_group_index] + total_dose1s_priority*wanted/(M_priorities_by_phase[phase]) >= wanted {	// do this weeks vaccinations fill up the compliance?
 									self.vaccinations_per_week_dose1[week][age_group_index] = wanted - dose1s[age_group_index];
 									total_dose1s_priority -= wanted - dose1s[age_group_index];
 									dose1s[age_group_index] = wanted;
-									N_groups_by_phase[phase] -= 1;
+									M_priorities_by_phase[phase] -= wanted;
 
-									if N_groups_by_phase[phase] == 0 { phase += 1;}
+									if M_priorities_by_phase[phase] <= 0.0 { phase += 1;}
 									break 'inner;
 								}
 							} else {
-								M_randoms += age_group.M;	// random vaccination never fill up an age groups vaccination compliance, so do not consider that case
+								M_randoms += wanted;	// random vaccination never fill up an age groups vaccination compliance, so do not consider that case
 							}
 						}
 						if age_group_index == N_age_groups-1 {
@@ -325,11 +335,11 @@ impl Model {
 
 					let priority = age_group.phase == phase as i32; // does this group have priority?
 					if priority {
-						self.vaccinations_per_week_dose1[week][age_group_index] = total_dose1s_priority*age_group.M/M_priorities;
-						dose1s[age_group_index] += total_dose1s_priority*age_group.M/M_priorities;
+						self.vaccinations_per_week_dose1[week][age_group_index] = total_dose1s_priority*wanted/M_priorities;
+						dose1s[age_group_index] += total_dose1s_priority*wanted/M_priorities;
 					} else {
-						self.vaccinations_per_week_dose1[week][age_group_index] = total_dose1s_random*age_group.M/M_randoms;
-						dose1s[age_group_index] += total_dose1s_random*age_group.M/M_randoms;
+						self.vaccinations_per_week_dose1[week][age_group_index] = total_dose1s_random*wanted/M_randoms;
+						dose1s[age_group_index] += total_dose1s_random*wanted/M_randoms;
 					}
 				}
 			}
@@ -442,7 +452,7 @@ impl Model {
 		let (m_test_ineff, n_test_ineff) = (1.0211, 0.229);
 		let (m_test_eff, n_test_eff) = (1.0756, 0.3272);
 		let (m_TTI, n_TTI) = (1.6842, 0.1805);
-
+		
 		if N < self.N_TTI {
 			return (TTI_Rt-n_TTI)/m_TTI;
 		}

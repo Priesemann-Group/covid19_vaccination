@@ -1,4 +1,3 @@
 (function() {var implementors = {};
 implementors["covid19_vaccine_model"] = [{"text":"impl Sync for Model","synthetic":true,"types":[]},{"text":"impl Sync for AgeGroup","synthetic":true,"types":[]},{"text":"impl Sync for Solver","synthetic":true,"types":[]},{"text":"impl Sync for AgeGroupStateVector","synthetic":true,"types":[]}];
-implementors["covid19_vaccine_model_priesemann"] = [{"text":"impl Sync for AgeGroup","synthetic":true,"types":[]},{"text":"impl Sync for Model","synthetic":true,"types":[]},{"text":"impl Sync for Solver","synthetic":true,"types":[]},{"text":"impl Sync for AgeGroupStateVector","synthetic":true,"types":[]}];
 if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["AgeGroup","A collection of all the parameters for a given age group"],["Model","A collection of global parameters (especially the vaccination parameters) and all the age groups. Includes the dif. eqs."]]});

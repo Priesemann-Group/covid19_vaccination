@@ -33,7 +33,7 @@ pub struct Solver {
 	/// In the end this variable can then be easily used to calculate the $p_i(t)$ from the manuscript, the fraction of vaccinated people that get infected before developing
 	/// their immunisation. Essentially it was introduced to convert the system of delay differential equations depending on the delayed time continuum from t-tau to t
 	/// into one depending on only the system state at the discrete delayed time t-tau by adding one more differential equation.
-	pub H: Vec<f64>,
+	//pub H: Vec<f64>,
 	/// Result vector for the raw $R_t$ used in the dif. eqs. (not test-trace-and-isolate (TTI) corrected)
 	pub Rt: Vec<f64>,
 	/// Result vector for the system states (compartments)
@@ -57,8 +57,9 @@ impl Solver {
 		self.states.push(self.initials.clone());
 		self.Rt.clear();
 		self.Rt.push(self.Rt_initial);
-		self.H.clear();
-		self.H.push(self.Rt_initial/self.model.M*self.model.I_eff(&self.initials)*self.model.tau);
+		for age_group_index in 0..self.initials.len() {
+			self.initials[age_group_index].h = self.Rt_initial*self.model.I_eff(age_group_index, &self.initials)*self.model.tau;
+		}
 		self.N.clear();
 		self.N.push(self.model.N(&self.initials));
 		self.N_obs.clear();
@@ -92,7 +93,6 @@ impl Solver {
 
 		let N = (preview_length/self.dt) as usize;
 		let mut preview_time: Vec<f64> = Vec::with_capacity(N);
-		let mut preview_H: Vec<f64> = Vec::with_capacity(N);
 		let mut preview_Rt: Vec<f64> = Vec::with_capacity(N);
 		let mut preview_states: Vec<Vec<AgeGroupStateVector>> = Vec::with_capacity(N);
 		let mut preview_N: Vec<f64> = Vec::with_capacity(N);
@@ -107,14 +107,13 @@ impl Solver {
 		for bin in 1..N_bins+1 {
 
 			// Run for the preview length
-			self.run_rk4(preview_length, &mut preview_time, &mut preview_H, &mut preview_Rt, &mut preview_states, &mut preview_N,
-										&self.time, &self.H, &self.Rt, &self.states, R);
+			self.run_rk4(preview_length, &mut preview_time, &mut preview_Rt, &mut preview_states, &mut preview_N,
+										&self.time, &self.Rt, &self.states, R);
 
 			// Append relevant slices
 			let bin_index = locate_position(&preview_time, t0 + (bin as f64)*bin_length);
 			self.Rt.extend_from_slice(&preview_Rt[0..bin_index]);
 			self.states.extend_from_slice(&preview_states[0..bin_index]);
-			self.H.extend_from_slice(&preview_H[0..bin_index]);
 			self.time.extend_from_slice(&preview_time[0..bin_index]);
 			self.N.extend_from_slice(&preview_N[0..bin_index]);
 			self.index += bin_index;
@@ -219,7 +218,6 @@ impl Solver {
 
 			// Clear preview vectors
 			preview_time.clear();
-			preview_H.clear();
 			preview_Rt.clear();
 			preview_states.clear();
 			preview_N.clear();
@@ -231,14 +229,13 @@ impl Solver {
 	/// Solves the system of delay diff. eqs. for a timespan T using Runge-Kutta 4. Saves the results in time, H, Rt, states and N. Uses the respective history arrays if the delays reach out of the current simulation.
 	/// 
 	/// Returns the index in the result arrays in the end for easy access.
-	pub fn run_rk4(&self, T: f64, time: &mut Vec<f64>, H: &mut Vec<f64>, Rt: &mut Vec<f64>, states: &mut Vec<Vec<AgeGroupStateVector>>, N: &mut Vec<f64>,
-									  time_history: &Vec<f64>, H_history: &Vec<f64>, Rt_history: &Vec<f64>, states_history: &Vec<Vec<AgeGroupStateVector>>, R: f64) -> usize {
+	pub fn run_rk4(&self, T: f64, time: &mut Vec<f64>, Rt: &mut Vec<f64>, states: &mut Vec<Vec<AgeGroupStateVector>>, N: &mut Vec<f64>,
+									  time_history: &Vec<f64>, Rt_history: &Vec<f64>, states_history: &Vec<Vec<AgeGroupStateVector>>, R: f64) -> usize {
 
 		// Preparations, initialise running variables and indices
 		let history_index = time_history.len()-1;
 		let t0 = time_history[history_index];
 		let mut t = t0;
-		let mut h = H_history[history_index];
 		let mut state = states_history[history_index].clone();
 
 		let index_delay:usize = (self.model.tau/self.dt) as usize;
@@ -262,19 +259,17 @@ impl Solver {
 			}
 
 			// Runge Kutta 4
-			let (s1, h1) = self.model.slopes(t, h, R, &state, delayed_R, delayed_state);
-			let (s2, h2) = self.model.slopes(t+0.5*self.dt, h+h1*0.5*self.dt, R, &add_vec(mul_vec(&s1, 0.5*self.dt), &state), delayed_R, delayed_state);
-			let (s3, h3) = self.model.slopes(t+0.5*self.dt, h+h2*0.5*self.dt, R, &add_vec(mul_vec(&s2, 0.5*self.dt), &state), delayed_R, delayed_state);
-			let (s4, h4) = self.model.slopes(t+self.dt, h+h3*self.dt, R, &add_vec(mul_vec(&s3, self.dt), &state), delayed_R, delayed_state);
+			let s1 = self.model.slopes(t, R, &state, delayed_R, delayed_state);
+			let s2 = self.model.slopes(t+0.5*self.dt, R, &add_vec(mul_vec(&s1, 0.5*self.dt), &state), delayed_R, delayed_state);
+			let s3 = self.model.slopes(t+0.5*self.dt, R, &add_vec(mul_vec(&s2, 0.5*self.dt), &state), delayed_R, delayed_state);
+			let s4 = self.model.slopes(t+self.dt, R, &add_vec(mul_vec(&s3, self.dt), &state), delayed_R, delayed_state);
 
 			state = add_vec(state, &mul_vec(&add_vec(add_vec(s1, &s4), &mul_vec(&add_vec(s2, &s3), 2.0)), self.dt/6.0));
-			h += self.dt/6.0*(h1+2.*h2+2.*h3+h4);
 			t += self.dt;
 
 			// Save results
 			Rt.push(R);
 			states.push(state.clone());
-			H.push(h);
 			time.push(t);
 
 			// Calculate the daily case numbers
@@ -295,8 +290,8 @@ impl Solver {
 		let mut file = std::fs::File::create(filename).expect("create failed");
 
 		file.write_all("M \t beta \t tau \t tau_vacc \t random_vacc \t ICU_capacity \t TTI_capacity \t N_TTI \t N_test_eff \t N_test_ineff \t N_no_test\n".as_bytes()).expect("write failed");
-		file.write_all(format!("{1:.0$} \t {2:.0$} \t {3:.0$} \t {4:.0$} \t {5:.0$} \t {6:.0$} \t {7:.0$} \t {8:.0$} \t {9:.0$} \t {10:.0$}\n", 
-					precision, self.model.M, self.model.eta0, self.model.tau, self.model.tau_vacc, self.model.random_vacc, self.model.kappa0, self.model.N_TTI, self.model.N_test_eff, self.model.N_test_ineff, self.model.N_no_test).as_bytes()).expect("write failed");
+		file.write_all(format!("{1:.0$} \t {2:.0$} \t {3:.0$} \t {4:.0$} \t {5:.0$} \t {6:.0$} \t {7:.0$} \t {8:.0$} \t {9:.0$} \t {10:.0$} \t {11:.0$} \t {12:.0$} \t {13:.0$}\n", 
+					precision, self.model.M, self.model.eta0, self.model.tau, self.model.tau_vacc, self.model.random_vacc, self.model.kappa0, self.model.N_TTI, self.model.N_test_eff, self.model.N_test_ineff, self.model.N_no_test, self.model.sigma[0], self.model.sigma[1], self.model.sigma[2]).as_bytes()).expect("write failed");
 
 
 		// Write age group parameters 
@@ -313,10 +308,10 @@ impl Solver {
 
 		// Write time, H, Rt data
 		let Rt_TTI_corrected: Vec<f64> = self.Rt.iter().zip(self.N_obs.iter()).map(|n| self.model.raw_Rt_to_TTI_corrected(*n.0, *n.1)).collect();
-		let to_write = self.time.iter().step_by(write_every).zip(self.H.iter().step_by(write_every)).zip(self.Rt.iter().step_by(write_every)).zip(self.N.iter().step_by(write_every)).zip(self.N_obs.iter().step_by(write_every)).zip(Rt_TTI_corrected.iter().step_by(write_every)).map(|n| format!("{1:.0$} \t {2:.0$} \t {3:.0$} \t {4:.0$} \t {5:.0$} \t {6:.0$}", precision, n.0.0.0.0.0, n.0.0.0.0.1, n.0.0.0.1, n.0.0.1, n.0.1, n.1)).collect::<Vec<String>>().join("\n");
+		let to_write = self.time.iter().step_by(write_every).zip(self.Rt.iter().step_by(write_every)).zip(self.N.iter().step_by(write_every)).zip(self.N_obs.iter().step_by(write_every)).zip(Rt_TTI_corrected.iter().step_by(write_every)).map(|n| format!("{1:.0$} \t {2:.0$} \t {3:.0$} \t {4:.0$} \t {5:.0$}", precision, n.0.0.0.0, n.0.0.0.1, n.0.0.1, n.0.1, n.1)).collect::<Vec<String>>().join("\n");
 		filename = format!("data/{}/tHRt.data", foldername);
 		file = std::fs::File::create(filename).expect("create failed");
-		file.write_all("t \t H \t Rt \t N \t N_obs \t Rt_TTI_corrected\n".as_bytes()).expect("write failed");
+		file.write_all("t \t Rt \t N \t N_obs \t Rt_TTI_corrected\n".as_bytes()).expect("write failed");
 		writeln!(file, "{}", to_write)?;
 		
 		// Write age group state vector data
@@ -339,7 +334,7 @@ impl Solver {
 		for i in 0..N_age_groups {
 			filename = format!("data/{}/{}_age_group.data", foldername, self.model.age_groups[i].name);
 			file = std::fs::File::create(filename).expect("create failed");
-			file.write_all("S0 \t S1 \t S2 \t V1 \t V2 \t E0 \t E1 \t E2 \t I0 \t I1 \t I2 \t ICU0 \t ICU1 \t ICU2 \t D \t R0 \t R1 \t R2 \t f1 \t f2 (first line is initial values + initially vaccianted)\n".as_bytes()).expect("write failed");
+			file.write_all("S0 \t S1 \t S2 \t V1 \t V2 \t E0 \t E1 \t E2 \t I0 \t I1 \t I2 \t ICU0 \t ICU1 \t ICU2 \t D \t R0 \t R1 \t R2 \t h \t f1 \t f2 (first line is initial values + initially vaccianted)\n".as_bytes()).expect("write failed");
 			writeln!(file, "{}", data[i].join("\n"))?;
 		}
 		Ok(())

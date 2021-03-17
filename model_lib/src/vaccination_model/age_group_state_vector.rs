@@ -29,7 +29,10 @@ pub struct AgeGroupStateVector {
 	pub D: f64,
 	
 	/// Array of the susceptible people (array entries: unvaccinated, immuized from one dose, immunized from two doses) 
-	pub R: [f64; 3]
+	pub R: [f64; 3],
+
+	/// 
+	pub h: f64
 }
 
 impl AgeGroupStateVector {
@@ -68,7 +71,8 @@ impl AgeGroupStateVector {
 			I: [in_I*unvacc, in_I*vacc1_fraction, in_I*vacc2_fraction],
 			ICU: [in_ICU, 0.0, 0.0],	// Assume no one from the initially vaccinated is in ICU. Holds only when few people have been vaccinated.
 			D: 0.0,
-			R: [in_R*unvacc, in_R*vacc1_fraction + in_S*vacc1_fraction*eta0, in_R*vacc2_fraction + in_S*vacc2_fraction*eta0*(2.-eta0)]
+			R: [in_R*unvacc, in_R*vacc1_fraction + in_S*vacc1_fraction*eta0, in_R*vacc2_fraction + in_S*vacc2_fraction*eta0*(2.-eta0)],
+			h: 0.0
 		}
 	}
 }
@@ -85,7 +89,8 @@ impl Add<AgeGroupStateVector> for AgeGroupStateVector {
 			I: [self.I[0]+rhs.I[0], self.I[1]+rhs.I[1], self.I[2]+rhs.I[2]],
 			ICU: [self.ICU[0]+rhs.ICU[0], self.ICU[1]+rhs.ICU[1], self.ICU[2]+rhs.ICU[2]],
 			D: self.D+rhs.D,
-			R: [self.R[0]+rhs.R[0], self.R[1]+rhs.R[1], self.R[2]+rhs.R[2]]
+			R: [self.R[0]+rhs.R[0], self.R[1]+rhs.R[1], self.R[2]+rhs.R[2]],
+			h: self.h+rhs.h
 		}
 	}
 }
@@ -102,7 +107,8 @@ impl Mul<f64> for AgeGroupStateVector {
 			I: [self.I[0]*factor, self.I[1]*factor, self.I[2]*factor],
 			ICU: [self.ICU[0]*factor, self.ICU[1]*factor, self.ICU[2]*factor],
 			D: self.D*factor,
-			R: [self.R[0]*factor, self.R[1]*factor, self.R[2]*factor]
+			R: [self.R[0]*factor, self.R[1]*factor, self.R[2]*factor],
+			h: self.h*factor
 		}
 	}
 }
@@ -110,8 +116,8 @@ impl Mul<f64> for AgeGroupStateVector {
 /// Displays an AgeGroupStateVector in a str 
 impl std::fmt::Display for AgeGroupStateVector {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{1:.0$} \t {2:.0$} \t {3:.0$} \t {4:.0$} \t {5:.0$} \t {6:.0$} \t {7:.0$} \t {8:.0$} \t {9:.0$} \t {10:.0$} \t {11:.0$} \t {12:.0$} \t {13:.0$} \t {14:.0$} \t {15:.0$} \t {16:.0$} \t {17:.0$} \t {18:.0$}",
-         	   6, self.S[0], self.S[1], self.S[2], self.V[0], self.V[1], self.E[0], self.E[1], self.E[2], self.I[0], self.I[1], self.I[2], self.ICU[0], self.ICU[1], self.ICU[2], self.D, self.R[0], self.R[1], self.R[2])
+        write!(f, "{1:.0$} \t {2:.0$} \t {3:.0$} \t {4:.0$} \t {5:.0$} \t {6:.0$} \t {7:.0$} \t {8:.0$} \t {9:.0$} \t {10:.0$} \t {11:.0$} \t {12:.0$} \t {13:.0$} \t {14:.0$} \t {15:.0$} \t {16:.0$} \t {17:.0$} \t {18:.0$} \t {19:.0$}",
+         	   6, self.S[0], self.S[1], self.S[2], self.V[0], self.V[1], self.E[0], self.E[1], self.E[2], self.I[0], self.I[1], self.I[2], self.ICU[0], self.ICU[1], self.ICU[2], self.D, self.R[0], self.R[1], self.R[2], self.h)
     }
 }
 

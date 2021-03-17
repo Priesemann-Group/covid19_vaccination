@@ -1,3 +1,6 @@
+# @Author: Simon Bauer
+# @Date:   2021-06-10
+
 import numpy as np
 import matplotlib.pyplot as plt
 import sys, os
@@ -26,14 +29,13 @@ for i, dataname in enumerate(sys.argv[2:]):
 	data = data[:,:,1:]
 
 	N_age_groups = len(data)
-	t, H_data, Rt_data, N_data, N_obs_data, Rt_corrected = np.loadtxt(os.path.join(location, "tHRt.data"), skiprows=1).T
+	t, Rt_data, N_data, N_obs_data, Rt_corrected = np.loadtxt(os.path.join(location, "tHRt.data"), skiprows=1).T
 
 	# Restrict plot from beginning of March to end of 2021
 	end_time_index = np.argmax((t-6)/30+1>=13)
 	start_time_index = np.argmax((t-6)/30+1>=3)
 	data = data[:,:,start_time_index:end_time_index]
 	t = t[start_time_index:end_time_index]
-	H_data = H_data[start_time_index:end_time_index]
 	Rt_data = Rt_data[start_time_index:end_time_index]
 	N_data = N_data[start_time_index:end_time_index]
 	N_obs_data = N_obs_data[start_time_index:end_time_index]
@@ -93,18 +95,18 @@ for i, dataname in enumerate(sys.argv[2:]):
 	avg_age_tot = (death_rates_tot.T*avg_ages).T.sum(axis=0)/death_rates_tot.sum(axis=0)
 
 	# Done with vaccinations when?
-	dose1_end = np.argmax(data[1,18] == 0)
-	dose2_end = np.argmax(data[1,19] == 0)
-	dose1_end_risk = np.argmax(data[-3,18] == 0)
-	dose2_end_risk = np.argmax(data[-3,19] == 0)
-	dose1_end_elderly = np.argmax(data[-1,18] == 0)
-	dose2_end_elderly = np.argmax(data[-1,19] == 0)
+	dose1_end = np.argmax(data[1,19] == 0)
+	dose2_end = np.argmax(data[1,20] == 0)
+	dose1_end_risk = np.argmax(data[-3,19] == 0)
+	dose2_end_risk = np.argmax(data[-3,20] == 0)
+	dose1_end_elderly = np.argmax(data[-1,19] == 0)
+	dose2_end_elderly = np.argmax(data[-1,20] == 0)
 
 
 	## Plot
 	v1[i].set_title(descriptions[i])
-	v1[i].stackplot(t, data[:,18], labels=names, ls='-', alpha=1.0)
-	v2[i].stackplot(t, data[:,19], labels=names, ls='-', alpha=1.0)
+	v1[i].stackplot(t, data[:,19], labels=names, ls='-', alpha=1.0)
+	v2[i].stackplot(t, data[:,20], labels=names, ls='-', alpha=1.0)
 
 	S[i].stackplot(t, data[:,[0,1,2,3,4]].sum(axis=1), labels=names, alpha=1.0)
 
@@ -151,10 +153,11 @@ S[0].set_ylabel(r"Total susceptible")
 I[0].set_ylabel(r"Daily infected")	
 ICU[0].set_ylabel(r"ICU occupancy")
 D[0].set_ylabel(r"Cumulative deaths")
-Rt[0].set_ylabel(r"Contacts")
+Rt[0].set_ylabel(r"Rep. Number")
 v1[0].set_ylabel("First doses\nper day per million")
 v2[0].set_ylabel("Second doses\nper day per million")
 Age[0].set_ylabel(r"Average age")
 
 plt.tight_layout(w_pad=3, h_pad=0.1)
+#plt.show()
 fig.savefig(resultname+".pdf")

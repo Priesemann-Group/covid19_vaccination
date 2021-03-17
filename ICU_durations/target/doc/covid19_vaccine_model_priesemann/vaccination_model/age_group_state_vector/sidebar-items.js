@@ -1,1 +1,0 @@
-initSidebarItems({"fn":[["add_vec","Adds two vectors of AgeGroupStateVector's."],["mul_vec","Multiplies a vectors of AgeGroupStateVector's by a scalar factor."]],"struct":[["AgeGroupStateVector","Used to store all the information on the state of one age group"]]});

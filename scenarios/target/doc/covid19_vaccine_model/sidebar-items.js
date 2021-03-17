@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["main",""]],"mod":[["vaccination_model","The module implementing everything from the model and the solver."]]});
+initSidebarItems({"mod":[["vaccination_model","The module implementing everything from the model and the solver."]]});
