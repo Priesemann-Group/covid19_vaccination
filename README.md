@@ -1,3 +1,6 @@
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4610023.svg)](https://doi.org/10.5281/zenodo.4610023)
+
 # COVID-19 vaccination
 
 Code repository for the research article ***Relaxing restrictions at the pace of vaccination increases freedom and guards against further COVID-19 waves in Europe***, [published as a pre-print on arXiv](https://arxiv.org/abs/2103.06228). The data generation part of the code is written in the [Rust programming language](https://www.rust-lang.org/), the plots are created using Matplotlib in Python.
