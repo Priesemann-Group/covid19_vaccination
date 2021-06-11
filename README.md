@@ -10,7 +10,7 @@ In this repository you will find five main folders:
 * the _scripts_ folder: In this you find three scripts to reproduce the main figures from the paper (see below).
 * the _figures_ folder, into which the resulting figures from the scripts get saved.
 * the *ICU_durations* and the *scenarios* folders, in which the Rust and Python code lies, which is used to generate the figures and get called from the two scripts in the *scripts* folder.
-* the *model_lib* folder: Here are the library files for our implementation of the SEIR+ICU+vaccination model from our paper. Look into the source code here if you look for implementaion details. See also the documentation [here]().
+* the *model_lib* folder: Here are the library files for our implementation of the SEIR+ICU+vaccination model from our paper. Look into the source code here if you look for implementaion details.
 
 ## To reproduce the figures from the paper:
 * To reproduce the scenarios featured in Figs. 1-3 and in the supplementary figures in our paper, there is a script **scenarios.sh** in the *scripts* folder. Running this will generate the data for all the considered scenarios and save an two overview figures in *figures/scenarios/*:
