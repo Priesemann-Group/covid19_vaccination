@@ -22,4 +22,4 @@ The script also allows to change some default model parameters, like the vaccine
 
 * To reproduce the sensitivity analysis results from the Supplementary Information S2, there is a third script **sensitivity.sh**. This will generate multiple pdf files in *figures/sensitivity/* (appropriately named after the parameter that is swiped through), which connect to the rows of the sensitivity analysis Figure S1. It also allows to change the default values and the which values for the parameters are swiped through.
 
-Example figures for all three scripts with default parameters can already be found in the *scripts* folder.
+Example figures for all three scripts with default parameters can already be found in the *scripts* folder. When changing any of the parameters in any of the scripts, please always make sure that the number of decimal places you type in matches the number of decimal places of the default values. Otherwise the code will not be able to find the data files and the generation of the figures will fail. The correct number of decimal places is also always indicated in a comment following each parameter.
