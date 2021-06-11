@@ -12,7 +12,7 @@ fn main() {
 	//println!("Generating data...");
 	//// Retrieve the parameters
 	let args: Vec<String> = env::args().collect();
-
+	
 	// Model parameters
 	let scenario: &String = &args[1];	// ["I", "II", "III", "IV", "V", "IV*", "V*"]
 	let country: &String = &args[2];	// ["DE", "FN", "IT", "CR"]
