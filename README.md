@@ -23,3 +23,21 @@ The script also allows changing some default model parameters, like the vaccine 
 * To reproduce the plots from Fig. 4 and 5 in the paper, there is another script **ICU_durations.sh** in the *scripts* folder. This will create a figure in *figures/ICU_durations/*, where the months that ICUs will have to work at full capacity given a lifting of the COVID-19 restrictions after the vaccination programs is plotted. Generating the data will take some time. This script also allows to change some parameters, like the maximal gross reproduction number to which the restrictions are lifted in the end (e.g. for Figure 4 B this is *R_max=3.5*, for Figure 4 C *R_max=2.5*). It also allows changing the demographics to match a given country (between GER, FIN, ITA and CZE) and the contact structure (between homogeneous contacts, pre-COVID contacts and pre-COVID contacts with reduced contagious contacts in schools). This allows to reproduce Fig. 5 and the supplementary Figures. NOTE: For some parameter combinations there sometimes appear some false (!) data points, i.e. data points where an ICU duration of 0 is computed from the program even though the uptake is much too low to prevent another wave. That is a known bug in the code. However, they are generally easy to spot.
 
 * To reproduce the sensitivity analysis results from the Supplementary Information S2, there is a third script **sensitivity.sh**. This will generate multiple pdf files in *figures/sensitivity/* (appropriately named after the parameter that is swiped through), which connect to the rows of the sensitivity analysis Figure S1. It also allows to change the default values, and which values for the parameters are swiped through.
+
+## How to run the scripts:
+To run the scripts you need to have installed both Rust and Python. In the parent directroy (where this README is located) first run
+
+```bash
+make
+```
+to compile the Rust code. Then you can run the scripts individually with:
+
+```bash
+./scripts/scenarios.sh
+```
+```bash
+./scripts/sensitivity.sh
+```
+```bash
+./scripts/ICU_durations.sh
+```
