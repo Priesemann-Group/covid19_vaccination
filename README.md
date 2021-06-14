@@ -25,7 +25,7 @@ The script also allows changing some default model parameters, like the vaccine 
 * To reproduce the sensitivity analysis results from the Supplementary Information S2, there is a third script **sensitivity.sh**. This will generate multiple pdf files in *figures/sensitivity/* (appropriately named after the parameter that is swiped through), which connect to the rows of the sensitivity analysis Figure S1. It also allows to change the default values, and which values for the parameters are swiped through.
 
 ## How to run the scripts:
-To run the scripts you need to have installed both Rust and Python. In the parent directroy (where this README is located) first run
+To run the scripts you need to have installed both [Rust](https://www.rust-lang.org/tools/install) and [Python](https://www.python.org/downloads/). In the parent directroy (where this README is located) first run
 
 ```bash
 make
